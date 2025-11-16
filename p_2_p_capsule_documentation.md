@@ -14,7 +14,7 @@ This is written as a real architectural/developer-facing document suitable for o
 
 # 1. What the System Is
 
-**P2P Capsule MVP** is a **single-file, self-contained, serverless application** intended to demonstrate and enable:
+**P2P Capsule MVP** is a **modular, self-contained, serverless application** that supports both multi-file and single-file deployment modes. It is intended to demonstrate and enable:
 
 - Direct **WebRTC peer-to-peer communication** (text, encrypted file transfer, video)
 - **Local encrypted vault storage** (OPFS or User Folder)
@@ -108,7 +108,45 @@ Browser permissions apply normally once deployed on HTTPS or IPFS subdomain gate
 
 ---
 
-# 3. How to Deploy on IPFS (the important part)
+# 3. How to Deploy
+
+The system supports two deployment models:
+
+1. **Standard multi-file bundle** in `dist/` for GitHub Pages and typical static hosting
+2. **Fully inlined single-file** in `dist-inline/index.html` for one-file IPFS/IPNS distribution
+
+## 3.1 Building the Application
+
+### Prerequisites
+
+```bash
+# Install Node.js and npm, then install dependencies
+npm install
+```
+
+### Standard Build (Multi-file)
+
+```bash
+# Build for production
+npm run build
+```
+
+Output is in `dist/` directory. Deploy this to:
+- GitHub Pages
+- Netlify, Vercel, etc.
+- Any static hosting service
+- Traditional web servers
+
+### Inline Build (Single-file)
+
+```bash
+# Build single-file variant
+npm run build:inline
+```
+
+Output is `dist-inline/index.html` — a fully self-contained file ready for IPFS distribution.
+
+## 3.2 Deploying to IPFS (Single-file Mode)
 
 The goal is:
 
@@ -119,7 +157,7 @@ The goal is:
 
 This is exactly what **IPFS subdomain gateways** allow.
 
-## 3.1 One-time setup (local machine)
+### One-time setup (local machine)
 
 ```bash
 ipfs init
@@ -128,24 +166,20 @@ ipfs daemon
 
 Keep `ipfs daemon` running.
 
-## 3.2 Publish the file
-
-Save the MVP as:
-
-```
-index.html
-```
-
-Then:
+### Publish the inline build
 
 ```bash
-ipfs add --cid-version=1 --hash=sha2-256 index.html
+# Build the single-file variant
+npm run build:inline
+
+# Add to IPFS
+ipfs add --cid-version=1 --hash=sha2-256 dist-inline/index.html
 # → added <CID> index.html
 ```
 
 You now have a public, immutable link:
 
-### **https\://****.ipfs.dweb.link/**
+### **https\://<CID>.ipfs.dweb.link/**
 
 This link behaves like a real HTTPS website:
 
@@ -155,7 +189,7 @@ This link behaves like a real HTTPS website:
 - Browser allows file system access
 - Service workers can work
 
-### 3.3 Optional: Create a stable, updatable IPNS name
+### Optional: Create a stable, updatable IPNS name
 
 ```bash
 ipfs key gen capsule --type=ed25519
@@ -171,8 +205,20 @@ https://<PeerID>.ipns.dweb.link/
 Future updates only require:
 
 ```bash
-ipfs add index.html
+npm run build:inline
+ipfs add --cid-version=1 --hash=sha2-256 dist-inline/index.html
+# → new <CID>
 ipfs name publish --key=capsule /ipfs/<newCID>
+```
+
+## 3.3 Deploying to GitHub Pages (Multi-file Mode)
+
+```bash
+# Build the standard bundle
+npm run build
+
+# Deploy the dist/ directory to GitHub Pages
+# (Use GitHub Actions, gh-pages npm package, or manual upload)
 ```
 
 ---
@@ -214,23 +260,109 @@ Once both sides accept each other's Session Description, WebRTC connects.
 
 # 5. Developer Architecture Overview
 
-## 5.1 Modules
+## 5.1 Project Structure
 
-The MVP includes these subsystems:
+The codebase is now organized as a modular ES6 application:
 
-- **Crypto**: PBKDF2, HKDF, AES-GCM
-- **WebRTC**: peer connection, data channels, media tracks
-- **File Transfer**: chunked framing, metadata header + encrypted payload
-- **Vault**: FS API / OPFS with encrypted chunks
-- **QR System**: render + scanning loops
-- **Tests**: built-in verification
-- **Service Worker Loader**: disabled in sandbox, ready for deployment
+```
+turbo-barnacle/
+├── src/                      # ES module source files
+│   ├── main.js              # Entry point, wires up DOM and modules
+│   ├── crypto.js            # PBKDF2, HKDF, AES-GCM, hashing
+│   ├── webrtc.js            # RTCPeerConnection, DataChannel, chat, file transfer
+│   ├── vault.js             # OPFS/User Folder vault storage
+│   ├── qr.js                # QR encode/decode, modal, camera scanning
+│   ├── pwa.js               # Service worker registration helpers
+│   └── tests.js             # Self-test routines
+├── scripts/                  # Build scripts
+│   └── inline-build.mjs     # Script to generate single-file variant
+├── dist/                     # Standard build output (multi-file)
+├── dist-inline/              # Inline build output (single-file)
+├── index.html               # Main HTML template
+├── package.json             # Dependencies and build scripts
+└── vite.config.js           # Vite build configuration
+```
+
+## 5.2 Module Responsibilities
+
+### `src/crypto.js` — Cryptographic Primitives
+
+- **PBKDF2** key derivation from passphrase (200,000 iterations)
+- **HKDF** per-item key derivation
+- **AES-GCM** encryption/decryption
+- **SHA-256** hashing for item IDs
+- Exports: `genPass()`, `deriveRoomKey()`, `getRoomKey()`, `hkdfItemKey()`, `aesGcmEncrypt()`, `aesGcmDecrypt()`, `sha256Hex()`
+
+### `src/webrtc.js` — WebRTC Communication
+
+- RTCPeerConnection management
+- DataChannel setup and message handling
+- Chat message routing
+- Encrypted file transfer (chunked, AES-GCM per chunk)
+- Media track management (camera/mic)
+- Exports: `createOffer()`, `acceptAnswer()`, `createAnswer()`, `sendChat()`, `sendFiles()`, `enableCamera()`
+
+### `src/vault.js` — Local Storage
+
+- OPFS (Origin Private File System) storage
+- User Folder API integration
+- Encrypted chunk storage
+- Metadata management
+- Vault export functionality
+- Exports: `chooseVaultFolder()`, `addToVault()`, `listVault()`, `exportVaultCAR()`
+
+### `src/qr.js` — QR Code Handling
+
+- QR code generation for offers/answers
+- QR scanning via BarcodeDetector API
+- Modal management
+- Camera access for scanning
+- Exports: `showQR()`, `scanQRInto()`, `hideQRModal()`, `setupQREventListeners()`
+
+### `src/pwa.js` — Progressive Web App
+
+- Service worker registration helpers
+- Secure context detection
+- Exports: `canUsePageSW()`, `registerPageSW()`
+
+### `src/tests.js` — Self-Tests
+
+- DOM element verification
+- QR modal functionality tests
+- Packet framing validation
+- Crypto key derivation tests
+- Exports: `runTests()`
+
+### `src/main.js` — Application Entry Point
+
+- Imports and wires up all modules
+- DOM event listener setup
+- Tab navigation
+- Button click handlers
+- Application initialization
+
+## 5.3 Build System
+
+The project uses **Vite** for development and building:
+
+- **Development**: `npm run dev` — Hot module reloading at localhost:5173
+- **Standard build**: `npm run build` — Multi-file bundle in `dist/`
+- **Inline build**: `npm run build:inline` — Single-file variant in `dist-inline/`
+
+The inline build process:
+1. Runs standard Vite build
+2. Reads the built HTML and JavaScript/CSS assets
+3. Inlines all external assets into a single HTML file
+4. Outputs to `dist-inline/index.html`
+
+## 5.4 Design Principles
 
 Each subsystem was intentionally written to be:
 
-- Minimal
-- Untangled from external libraries
-- Extendable
+- **Minimal** — No unnecessary dependencies
+- **Modular** — Clear separation of concerns
+- **Untangled** — No external libraries (except Vite for building)
+- **Extendable** — Easy to add new features
 
 ---
 

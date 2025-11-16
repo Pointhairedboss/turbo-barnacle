@@ -1,0 +1,16 @@
+{
+  "name": "turbo-barnacle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "build:inline": "npm run build && node scripts/inline-build.mjs",
+    "test": "echo \"(TODO) add tests for crypto, framing, etc.\" && exit 0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
