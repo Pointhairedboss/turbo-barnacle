@@ -12,11 +12,15 @@ const projectRoot = resolve(__dirname, '..');
 const htmlPath = resolve(projectRoot, 'dist/index.html');
 let html = readFileSync(htmlPath, 'utf-8');
 
-// Extract all script and link tags
-// Note: This regex is for matching script tags in our controlled build output from Vite,
-// not for sanitizing user input. The build output is trusted and predictable.
-const scriptRegex = /<script[^>]*src="([^"]+)"[^>]*><\/script\s*>/gi;
-const linkRegex = /<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g;
+// Extract all script and link tags from Vite build output
+// SECURITY NOTE: These regexes process trusted build output from Vite, not untrusted user input.
+// The build output format is controlled and predictable. For security-critical HTML parsing
+// (e.g., user input sanitization), use a proper HTML parser like DOMParser or jsdom.
+// 
+// The regex allows optional whitespace before closing > to handle various formatting styles,
+// though Vite's output is consistent. This is a build-time tool, not a runtime sanitizer.
+const scriptRegex = /<script[^>]*\ssrc="([^"]+)"[^>]*><\/script\s*>/gi;
+const linkRegex = /<link[^>]*\srel="stylesheet"[^>]*\shref="([^"]+)"[^>]*>/gi;
 
 // Replace external JS files with inline scripts
 let match;
