@@ -106,8 +106,15 @@ The app includes built-in self-tests accessible via the "Tests" tab in the UI.
 
 ### Option 1: GitHub Pages (Standard Build)
 
+The project includes a GitHub Actions workflow that automatically builds and deploys to GitHub Pages when changes are pushed to the `main` branch.
+
+**Manual deployment:**
 1. Build the project: `npm run build`
 2. Deploy the `dist/` directory to GitHub Pages
+
+**Automatic deployment:**
+- Push changes to the `main` branch
+- GitHub Actions will automatically build and deploy to GitHub Pages
 
 ### Option 2: IPFS/IPNS (Inline Build)
 
