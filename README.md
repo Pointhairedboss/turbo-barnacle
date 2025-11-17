@@ -116,6 +116,44 @@ The project includes a GitHub Actions workflow that automatically builds and dep
 - Push changes to the `main` branch
 - GitHub Actions will automatically build and deploy to GitHub Pages
 
+**Deployment Notifications:**
+
+You will receive notifications about deployment status through multiple channels. For complete configuration instructions, see [DEPLOYMENT_NOTIFICATIONS.md](./DEPLOYMENT_NOTIFICATIONS.md).
+
+Quick summary:
+
+1. **GitHub Commit Status** (Always enabled)
+   - A status badge will appear on your commit showing deployment success/failure
+   - Visible in commit history, pull requests, and branches
+
+2. **GitHub Actions Workflow Logs** (Always enabled)
+   - View detailed deployment status in the Actions tab
+   - Includes deployment URL and commit information
+
+3. **Email Notifications** (Optional - Configure in GitHub settings)
+   - Go to [GitHub Notification Settings](https://github.com/settings/notifications)
+   - Under "Actions", enable workflow notifications:
+     - "Send notifications for failed workflows only" (recommended for deployments)
+     - Or "Send all notifications" for both success and failure
+
+4. **GitHub Mobile App** (Optional)
+   - Install the GitHub mobile app
+   - Enable push notifications for workflow runs in app settings
+   - Get instant notifications on your phone
+
+5. **Watch Repository Settings** (Optional)
+   - Go to the repository page
+   - Click "Watch" → "Custom" → Enable "Actions"
+   - Receive notifications for all workflow activity
+
+**Notification Content:**
+Each notification includes:
+- Deployment status (success/failure)
+- Commit SHA and message
+- Author information
+- Deployment URL (for successful deployments)
+- Link to workflow run details
+
 ### Option 2: IPFS/IPNS (Inline Build)
 
 For full details, see [p_2_p_capsule_documentation.md](./p_2_p_capsule_documentation.md)
