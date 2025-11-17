@@ -65,60 +65,74 @@ jobs:
             const buildStatus = '${{ needs.build.result }}';
             const deployStatus = '${{ needs.deploy.result }}';
             const commitSha = context.sha.substring(0, 7);
-            const commitMsg = context.payload.head_commit?.message || 'No message';
-            const author = context.payload.head_commit?.author?.name || 'Unknown';
-            
+            const commitMsg = context.payload.head_commit?.message ||
+              'No message';
+            const author = context.payload.head_commit?.author?.name ||
+              'Unknown';
+
             let status = '✅ Success';
-            let color = 'success';
             let message = `Deployment completed successfully!`;
             let emoji = '🚀';
-            
+
             if (buildStatus !== 'success' || deployStatus !== 'success') {
               status = '❌ Failed';
-              color = 'failure';
-              message = `Deployment failed. Build: ${buildStatus}, Deploy: ${deployStatus}`;
+              message = `Deployment failed. Build: ${buildStatus}, ` +
+                `Deploy: ${deployStatus}`;
               emoji = '⚠️';
             }
-            
+
             const notificationBody = `
             ## ${emoji} ${status} Deployment Notification
-            
+
             **Status:** ${message}
             **Commit:** \`${commitSha}\` - ${commitMsg}
             **Author:** ${author}
             **Deployment URL:** ${deployUrl}
-            **Workflow Run:** [View Details](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
-            
+            **Workflow Run:** [View Details](https://github.com/` +
+              `${context.repo.owner}/${context.repo.repo}/actions/` +
+              `runs/${context.runId})
+
             ---
-            
+
             ### How to receive these notifications:
-            
-            1. **GitHub Commit Status**: Check the commit status badge on your commit
-            2. **GitHub Actions Email**: Enable workflow notifications in your GitHub notification settings
-            3. **GitHub Mobile App**: Get push notifications for workflow runs
-            4. **Watch Repository**: Set repository to "All Activity" in Watch settings for email notifications
-            
+
+            1. **GitHub Commit Status**: Check the commit status badge
+               on your commit
+            2. **GitHub Actions Email**: Enable workflow notifications
+               in your GitHub notification settings
+            3. **GitHub Mobile App**: Get push notifications for
+               workflow runs
+            4. **Watch Repository**: Set repository to "All Activity"
+               in Watch settings for email notifications
+
             To configure GitHub notifications:
             - Go to https://github.com/settings/notifications
-            - Under "Actions", enable "Send notifications for failed workflows only" or "Send all notifications"
+            - Under "Actions", enable "Send notifications for failed
+              workflows only" or "Send all notifications"
             `;
-            
+
             // Create a commit status for the commit
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.sha,
-              state: buildStatus === 'success' && deployStatus === 'success' ? 'success' : 'failure',
-              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              state: buildStatus === 'success' && deployStatus === 'success'
+                ? 'success' : 'failure',
+              target_url: `https://github.com/${context.repo.owner}/` +
+                `${context.repo.repo}/actions/runs/${context.runId}`,
               description: message,
               context: 'Deployment Notification'
             });
-            
+
             console.log(notificationBody);
-            
+
             // Log notification details for workflow output
-            core.notice(`${emoji} Deployment ${buildStatus === 'success' && deployStatus === 'success' ? 'succeeded' : 'failed'}. URL: ${deployUrl}`);
-            
+            const deployResult = buildStatus === 'success' &&
+              deployStatus === 'success' ? 'succeeded' : 'failed';
+            core.notice(`${emoji} Deployment ${deployResult}. ` +
+              `URL: ${deployUrl}`);
+
             // Set output for potential downstream jobs
-            core.setOutput('status', buildStatus === 'success' && deployStatus === 'success' ? 'success' : 'failure');
+            core.setOutput('status', buildStatus === 'success' &&
+              deployStatus === 'success' ? 'success' : 'failure');
             core.setOutput('url', deployUrl);
