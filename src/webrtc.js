@@ -80,7 +80,7 @@ export function sendChat(message){
 
 function onDCMessage(ev){
   // Binary messages are file chunks with format: JSON_header\n[binary_data]
-  // String messages are chat or file-meta (pure JSON)
+  // String messages are chat, file-meta, or location (pure JSON)
   if(ev.data instanceof ArrayBuffer){
     receiveChunk(ev.data);
     return;
@@ -90,7 +90,20 @@ function onDCMessage(ev){
     const obj = JSON.parse(ev.data);
     if(obj.t==='chat'){ logChat('peer: '+obj.m); }
     if(obj.t==='file-meta'){ receivePrepare(obj); }
+    if(obj.t==='location'){ handleLocationMessage(obj); }
   } catch(e){ console.warn('non-json', e); }
+}
+
+function handleLocationMessage(locationData) {
+  // Dispatch custom event for location messages
+  const event = new CustomEvent('peer-location', { detail: locationData });
+  document.dispatchEvent(event);
+}
+
+export function sendLocation(locationData) {
+  if(!dc || dc.readyState!=='open') throw new Error('Not connected');
+  const message = { t: 'location', ...locationData };
+  dc.send(JSON.stringify(message));
 }
 
 export async function sendFiles(files){
