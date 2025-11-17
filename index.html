@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>P2P Capsule MVP — WebRTC + Local Vault + QR + IPFS/IPNS</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
   <style>
     :root { --bg:#0e0f12; --fg:#e7e9ee; --muted:#a8adbc; --accent:#6ae3ff; --card:#161821; --ok:#3bd671; --warn:#ffcc66; --err:#ff6b6b; }
     html, body { height:100%; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
@@ -28,6 +31,8 @@
     .meter > div { height:100%; background:linear-gradient(90deg,#3bd671,#6ae3ff); width:0% }
     .small { font-size:12px }
     pre { white-space:pre-wrap; word-break:break-word; background:#0f121a; padding:8px; border-radius:8px; border:1px solid #2a2f44; }
+    #map { height: 500px; border-radius: 10px; overflow: hidden; }
+    .leaflet-container { background: #0f121a; }
   </style>
 
   <!-- Minimal QR generator (tiny, placeholder-quality; swap for full lib later) -->
@@ -50,6 +55,7 @@
     <button data-tab="connect">Connect</button>
     <button data-tab="chat">Chat</button>
     <button data-tab="files">Files</button>
+    <button data-tab="map">Map</button>
     <button data-tab="vault">Vault</button>
     <button data-tab="camera">Camera</button>
     <button data-tab="publish">Publish</button>
@@ -160,6 +166,59 @@ console.log(`https://${cid}.ipfs.dweb.link/`);
     <div id="recvList" class="small" style="margin-top:8px"></div>
   </section>
 
+  <section id="tab-map" class="card hidden">
+    <h2>Map & Location Sharing</h2>
+    <p class="muted small">Share your location via device GPS, address lookup, or manual coordinates. Send exact location or H3 hex. Uses OpenStreetMap tiles (fair use policy applies). Nominatim geocoding has rate limits.</p>
+    
+    <div class="grid" style="margin-bottom:12px;">
+      <div class="card">
+        <h3 class="small">Your Location</h3>
+        <div class="row">
+          <button id="btnDeviceLocation">Device GPS</button>
+          <span id="locationStatus" class="pill">idle</span>
+        </div>
+        <div class="row">
+          <input id="addressInput" placeholder="Type address" style="flex:1"/>
+          <button id="btnGeocodeAddress">Lookup</button>
+        </div>
+        <div class="row">
+          <input id="latInput" placeholder="Latitude" size="12" type="number" step="any"/>
+          <input id="lngInput" placeholder="Longitude" size="12" type="number" step="any"/>
+          <button id="btnManualLocation">Set</button>
+        </div>
+        <div class="row">
+          <label class="small">H3 Resolution:</label>
+          <select id="h3ResolutionSelect">
+            <option value="7">7 (~5km)</option>
+            <option value="8">8 (~1km)</option>
+            <option value="9" selected>9 (~174m)</option>
+            <option value="10">10 (~65m)</option>
+            <option value="11">11 (~25m)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="small">Share Location</h3>
+        <div class="row">
+          <button id="btnShareExact">Send Exact Coords</button>
+        </div>
+        <div class="row">
+          <button id="btnShareH3">Send H3 Hex</button>
+        </div>
+        <div class="row">
+          <input id="pinLabel" placeholder="Pin label (optional)" style="flex:1"/>
+        </div>
+        <p class="small muted">Click map to drop a pin at any location</p>
+        <div class="row">
+          <button id="btnClearMap">Clear Markers</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="map"></div>
+  </section>
+
   <section id="tab-vault" class="card hidden">
     <h2>Local Vault</h2>
     <p class="muted small">Encrypted-at-rest using AES-GCM with key derived from passphrase. Stores to a user folder (if permitted) or browser OPFS. Thumbnails have no EXIF.</p>
@@ -207,6 +266,12 @@ console.log(`https://${cid}.ipfs.dweb.link/`);
     </div>
   </div>
 </div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<!-- H3 JS -->
+<script src="https://unpkg.com/h3-js@4.1.0/dist/h3-js.umd.js" crossorigin=""></script>
 
 <script type="module" src="/src/main.js"></script>
 </body>

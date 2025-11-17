@@ -10,10 +10,26 @@ import {
   createAnswer, 
   sendChat, 
   sendFiles, 
-  enableCamera 
+  enableCamera,
+  sendLocation
 } from './webrtc.js';
 import { chooseVaultFolder, addToVault, exportVaultCAR } from './vault.js';
 import { runTests } from './tests.js';
+import {
+  initMap,
+  getDeviceLocation,
+  geocodeAddress,
+  addUserLocation,
+  addPeerLocation,
+  addH3Hexagon,
+  createLocationMessage,
+  parseLocationMessage,
+  setH3Resolution,
+  getH3Resolution,
+  clearPeerLocations,
+  clearH3Hexagons,
+  latLngToH3
+} from './map.js';
 
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -154,6 +170,179 @@ $('#btnCam').onclick = async () => {
 
 // Tests
 $('#btnRunTests').onclick = runTests;
+
+// Map functionality
+let mapInitialized = false;
+let currentUserLocation = null;
+
+// Initialize map when tab is first accessed
+$$('.tabs button').forEach(b => {
+  if (b.dataset.tab === 'map') {
+    b.addEventListener('click', () => {
+      if (!mapInitialized) {
+        try {
+          initMap('map');
+          mapInitialized = true;
+          console.log('Map initialized');
+        } catch (e) {
+          console.error('Failed to initialize map:', e);
+          alert('Failed to initialize map: ' + e.message);
+        }
+      }
+    });
+  }
+});
+
+// Device location
+$('#btnDeviceLocation').onclick = async () => {
+  $('#locationStatus').textContent = 'getting...';
+  try {
+    const location = await getDeviceLocation();
+    currentUserLocation = location;
+    addUserLocation(location.lat, location.lng, 'Your device location');
+    $('#latInput').value = location.lat.toFixed(6);
+    $('#lngInput').value = location.lng.toFixed(6);
+    $('#locationStatus').textContent = 'got location';
+    setTimeout(() => $('#locationStatus').textContent = 'idle', 2000);
+  } catch (e) {
+    $('#locationStatus').textContent = 'failed';
+    alert('Failed to get device location: ' + e.message);
+    setTimeout(() => $('#locationStatus').textContent = 'idle', 2000);
+  }
+};
+
+// Geocode address
+$('#btnGeocodeAddress').onclick = async () => {
+  const address = $('#addressInput').value.trim();
+  if (!address) {
+    alert('Enter an address');
+    return;
+  }
+  
+  $('#locationStatus').textContent = 'geocoding...';
+  try {
+    const location = await geocodeAddress(address);
+    currentUserLocation = location;
+    addUserLocation(location.lat, location.lng, location.display_name || address);
+    $('#latInput').value = location.lat.toFixed(6);
+    $('#lngInput').value = location.lng.toFixed(6);
+    $('#locationStatus').textContent = 'found';
+    setTimeout(() => $('#locationStatus').textContent = 'idle', 2000);
+  } catch (e) {
+    $('#locationStatus').textContent = 'failed';
+    alert('Geocoding failed: ' + e.message);
+    setTimeout(() => $('#locationStatus').textContent = 'idle', 2000);
+  }
+};
+
+// Manual lat/lng
+$('#btnManualLocation').onclick = () => {
+  const lat = parseFloat($('#latInput').value);
+  const lng = parseFloat($('#lngInput').value);
+  
+  if (isNaN(lat) || isNaN(lng)) {
+    alert('Enter valid latitude and longitude');
+    return;
+  }
+  
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    alert('Latitude must be -90 to 90, longitude -180 to 180');
+    return;
+  }
+  
+  currentUserLocation = { lat, lng };
+  addUserLocation(lat, lng, 'Manual location');
+  $('#locationStatus').textContent = 'set';
+  setTimeout(() => $('#locationStatus').textContent = 'idle', 1000);
+};
+
+// H3 resolution selector
+$('#h3ResolutionSelect').onchange = (e) => {
+  setH3Resolution(parseInt(e.target.value));
+};
+
+// Share exact coordinates
+$('#btnShareExact').onclick = () => {
+  if (!currentUserLocation) {
+    alert('Set your location first');
+    return;
+  }
+  
+  try {
+    const label = $('#pinLabel').value.trim() || 'My location';
+    const message = createLocationMessage(
+      currentUserLocation.lat,
+      currentUserLocation.lng,
+      label,
+      false
+    );
+    sendLocation(message);
+    alert('Sent exact coordinates');
+  } catch (e) {
+    alert('Failed to send location: ' + e.message);
+  }
+};
+
+// Share H3 hex
+$('#btnShareH3').onclick = () => {
+  if (!currentUserLocation) {
+    alert('Set your location first');
+    return;
+  }
+  
+  try {
+    const label = $('#pinLabel').value.trim() || 'My H3 location';
+    const resolution = getH3Resolution();
+    const message = createLocationMessage(
+      currentUserLocation.lat,
+      currentUserLocation.lng,
+      label,
+      true,
+      resolution
+    );
+    
+    // Show the H3 hex on local map
+    const h3Index = latLngToH3(currentUserLocation.lat, currentUserLocation.lng, resolution);
+    addH3Hexagon(h3Index, '#6ae3ff', 0.3);
+    
+    sendLocation(message);
+    alert('Sent H3 hex (res ' + resolution + ')');
+  } catch (e) {
+    alert('Failed to send H3 location: ' + e.message);
+  }
+};
+
+// Handle pin drops on map
+document.addEventListener('map-pin-drop', (e) => {
+  const { lat, lng } = e.detail;
+  $('#latInput').value = lat.toFixed(6);
+  $('#lngInput').value = lng.toFixed(6);
+  currentUserLocation = { lat, lng };
+  addUserLocation(lat, lng, 'Dropped pin');
+});
+
+// Handle incoming peer locations
+document.addEventListener('peer-location', (e) => {
+  try {
+    const location = parseLocationMessage(e.detail);
+    addPeerLocation('peer', location.lat, location.lng, location.label, location.isH3);
+    
+    // If H3 hex, also show the hexagon
+    if (location.h3Index) {
+      addH3Hexagon(location.h3Index, '#3bd671', 0.3);
+    }
+    
+    console.log('Received peer location:', location);
+  } catch (e) {
+    console.error('Failed to parse peer location:', e);
+  }
+});
+
+// Clear map markers
+$('#btnClearMap').onclick = () => {
+  clearPeerLocations();
+  clearH3Hexagons();
+};
 
 // Setup QR modal event listeners
 setupQREventListeners();
