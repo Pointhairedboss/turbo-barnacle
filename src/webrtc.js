@@ -79,12 +79,17 @@ export function sendChat(message){
 }
 
 function onDCMessage(ev){
-  const data = typeof ev.data === 'string' ? ev.data : dec.decode(new Uint8Array(ev.data));
+  // Binary messages are file chunks with format: JSON_header\n[binary_data]
+  // String messages are chat or file-meta (pure JSON)
+  if(ev.data instanceof ArrayBuffer){
+    receiveChunk(ev.data);
+    return;
+  }
+  
   try {
-    const obj = JSON.parse(data);
+    const obj = JSON.parse(ev.data);
     if(obj.t==='chat'){ logChat('peer: '+obj.m); }
     if(obj.t==='file-meta'){ receivePrepare(obj); }
-    if(obj.t==='file-chunk'){ receiveChunk(obj); }
   } catch(e){ console.warn('non-json', e); }
 }
 
