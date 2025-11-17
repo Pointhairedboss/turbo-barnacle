@@ -5,6 +5,7 @@ Turbo-Barnacle is a p2p demonstration app intended to demonstrate the shortest p
 ## Features
 
 - **Direct WebRTC P2P communication** (text chat, encrypted file transfer, video)
+- **Geospatial location sharing** (H3 hexagonal indexing, Leaflet maps)
 - **Local encrypted vault storage** (OPFS or User Folder)
 - **QR-based signalling** (no server required for connection setup)
 - **Complete offline capability** (via optional service worker)
@@ -23,6 +24,7 @@ turbo-barnacle/
 │   ├── main.js              # Entry point, wires up DOM and modules
 │   ├── crypto.js            # PBKDF2, HKDF, AES-GCM, hashing
 │   ├── webrtc.js            # RTCPeerConnection, DataChannel, chat, file transfer
+│   ├── map.js               # Leaflet + H3 geospatial location sharing
 │   ├── vault.js             # OPFS/User Folder vault storage
 │   ├── qr.js                # QR encode/decode, modal, camera scanning
 │   ├── pwa.js               # Service worker registration helpers
@@ -149,6 +151,8 @@ ipfs name publish --key=capsule /ipfs/<CID>
 ## Architecture
 
 See [p_2_p_capsule_documentation.md](./p_2_p_capsule_documentation.md) for detailed system architecture, capabilities, and extension guidance.
+
+For information about the mapping and H3 geospatial features, see [MAP_FEATURE.md](./MAP_FEATURE.md).
 
 ## Security
 
